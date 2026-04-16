@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mesai Takip Sistemi</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <style>
 :root {
   --primary: #1e40af;
@@ -603,7 +604,8 @@ tr:hover td { background: var(--gray-50); }
         Tum veriler tarayicinizda saklanir. Baska bir cihazdan erismek icin disa aktarin.
       </p>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <button class="btn btn-primary" onclick="exportAllData()">Tum Veriyi Disa Aktar (JSON)</button>
+        <button class="btn btn-success" onclick="exportExcel()">Excel Disa Aktar (.xlsx)</button>
+        <button class="btn btn-primary" onclick="exportAllData()">JSON Yedek</button>
         <button class="btn btn-outline" onclick="document.getElementById('importInput').click()">Veri Ice Aktar</button>
         <input type="file" id="importInput" accept=".json" style="display:none" onchange="importAllData(event)">
         <button class="btn btn-danger" onclick="clearAllData()">Tum Verileri Sil</button>
@@ -1302,6 +1304,102 @@ function exportTable(tableId, filename) {
   a.click();
   URL.revokeObjectURL(url);
   showToast('CSV indirildi', 'success');
+}
+
+function exportExcel() {
+  if (store.records.length === 0) { showToast('Disa aktarilacak veri yok', 'error'); return; }
+  const wb = XLSX.utils.book_new();
+
+  // ===== Sayfa 1: Gunluk Detay =====
+  const gunlukRows = store.records
+    .sort((a,b) => a.date.localeCompare(b.date) || a.person.localeCompare(b.person))
+    .map(r => ({
+      'Tarih': r.date,
+      'Calisan': r.person,
+      'Giris': r.giris || '-',
+      'Cikis': r.cikis || '-',
+      'Toplam Saat': r.totalHours > 0 ? r.totalHours : '-',
+      'Gec Kalma (dk)': r.lateMinutes > 0 ? r.lateMinutes : '-',
+      'Konum': r.location || '-',
+      'Durum': !r.giris ? 'Eksik' : r.lateMinutes > 0 ? 'Gec' : 'Zamaninda'
+    }));
+  const ws1 = XLSX.utils.json_to_sheet(gunlukRows);
+  ws1['!cols'] = [{wch:12},{wch:20},{wch:8},{wch:8},{wch:12},{wch:14},{wch:20},{wch:12}];
+  XLSX.utils.book_append_sheet(wb, ws1, 'Gunluk Detay');
+
+  // ===== Sayfa 2: Aylik Ozet =====
+  const months = [...new Set(store.records.map(r => r.date.slice(0,7)))].sort();
+  const aylikRows = [];
+  for (const month of months) {
+    const [year, mo] = month.split('-').map(Number);
+    const daysInMonth = new Date(year, mo, 0).getDate();
+    let workDays = 0;
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dow = new Date(year, mo-1, d).getDay();
+      if (settings.weekendDays === 7) workDays++;
+      else if (settings.weekendDays === 6 && dow !== 0) workDays++;
+      else if (settings.weekendDays === 5 && dow !== 0 && dow !== 6) workDays++;
+    }
+    for (const emp of store.employees) {
+      const recs = store.records.filter(r => r.person === emp && r.date.startsWith(month));
+      const present = recs.filter(r => r.giris).length;
+      const hours = recs.reduce((s,r) => s + r.totalHours, 0);
+      const late = recs.filter(r => r.lateMinutes > 0).length;
+      aylikRows.push({
+        'Ay': month,
+        'Calisan': emp,
+        'Is Gunu': workDays,
+        'Devam': present,
+        'Devamsiz': workDays - present,
+        'Gec Kalma': late,
+        'Toplam Saat': Math.round(hours * 10) / 10,
+        'Ort Saat/Gun': present > 0 ? Math.round(hours / present * 10) / 10 : 0,
+        'Devam %': workDays > 0 ? Math.round(present / workDays * 100) : 0
+      });
+    }
+  }
+  const ws2 = XLSX.utils.json_to_sheet(aylikRows);
+  ws2['!cols'] = [{wch:10},{wch:20},{wch:10},{wch:8},{wch:10},{wch:10},{wch:12},{wch:12},{wch:10}];
+  XLSX.utils.book_append_sheet(wb, ws2, 'Aylik Ozet');
+
+  // ===== Sayfa 3: Calisan Bazli =====
+  const calisanRows = store.employees.map(emp => {
+    const recs = store.records.filter(r => r.person === emp);
+    const totalDays = recs.filter(r => r.giris).length;
+    const totalHours = recs.reduce((s,r) => s + r.totalHours, 0);
+    const lateDays = recs.filter(r => r.lateMinutes > 0).length;
+    const dates = recs.map(r => r.date).sort();
+    return {
+      'Calisan': emp,
+      'Toplam Gun': totalDays,
+      'Toplam Saat': Math.round(totalHours * 10) / 10,
+      'Ort Saat/Gun': totalDays > 0 ? Math.round(totalHours / totalDays * 10) / 10 : 0,
+      'Gec Kalma': lateDays,
+      'Ilk Kayit': dates[0] || '-',
+      'Son Kayit': dates[dates.length-1] || '-'
+    };
+  });
+  const ws3 = XLSX.utils.json_to_sheet(calisanRows);
+  ws3['!cols'] = [{wch:20},{wch:12},{wch:12},{wch:12},{wch:10},{wch:12},{wch:12}];
+  XLSX.utils.book_append_sheet(wb, ws3, 'Calisanlar');
+
+  // ===== Sayfa 4: Ham Mesajlar =====
+  const hamRows = store.entries
+    .sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))
+    .map(e => ({
+      'Tarih': e.date,
+      'Saat': e.time,
+      'Calisan': e.person,
+      'Islem': e.action === 'giris' ? 'GIRIS' : 'CIKIS',
+      'Konum': e.location || '-',
+      'Orijinal Mesaj': e.rawMessage
+    }));
+  const ws4 = XLSX.utils.json_to_sheet(hamRows);
+  ws4['!cols'] = [{wch:12},{wch:8},{wch:20},{wch:8},{wch:20},{wch:40}];
+  XLSX.utils.book_append_sheet(wb, ws4, 'Ham Kayitlar');
+
+  XLSX.writeFile(wb, `mesai_rapor_${todayStr()}.xlsx`);
+  showToast('Excel dosyasi indirildi', 'success');
 }
 
 function exportAllData() {

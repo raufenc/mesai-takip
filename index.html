@@ -622,7 +622,8 @@ const STORAGE_KEY = 'mesai_data';
 const SETTINGS_KEY = 'mesai_settings';
 
 let store = {
-  entries: [],      // parsed WhatsApp entries
+  allMessages: [],  // ALL parsed WhatsApp messages (ham veri, ayar bagimsiz)
+  entries: [],      // filtered entries (giris/cikis olanlar, ayarlara bagli)
   records: [],      // daily attendance records
   employees: [],    // unique employee list
   lastImport: null
@@ -666,7 +667,20 @@ function saveSettings() {
   settings.cikisKeys = document.getElementById('setCikisKeys').value;
   settings.weekendDays = parseInt(document.getElementById('setWeekend').value);
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-  showToast('Ayarlar kaydedildi', 'success');
+
+  // Ayarlar degisti — tum veriyi yeni ayarlarla yeniden isle
+  const oncekiKayit = store.entries.length;
+  reprocessData();
+  const yeniKayit = store.entries.length;
+  const fark = yeniKayit - oncekiKayit;
+  let mesaj = 'Ayarlar kaydedildi';
+  if (store.allMessages.length > 0) {
+    mesaj += `, ${store.allMessages.length} mesaj yeniden islendi → ${yeniKayit} giris/cikis`;
+    if (fark > 0) mesaj += ` (+${fark} yeni)`;
+    else if (fark < 0) mesaj += ` (${fark} azaldi)`;
+  }
+  showToast(mesaj, 'success');
+  refreshAll();
 }
 
 // ======================== WHATSAPP PARSER ========================
@@ -793,6 +807,7 @@ function extractLocation(message, action) {
 
 function parseWhatsAppExport(text) {
   const lines = text.split('\n');
+  const allMessages = [];
   const entries = [];
 
   // Multiple WhatsApp formats:
@@ -835,23 +850,24 @@ function parseWhatsAppExport(text) {
       // phone number only — include anyway (some people don't have contact names)
     }
 
-    const action = detectAction(message);
-    if (!action) continue; // only keep giriş/çıkış messages
-
-    const location = extractLocation(message, action);
-
-    entries.push({
+    // Tum mesajlari kaydet (action olsun olmasin)
+    const msgObj = {
       person: name.trim(),
       date: dateStr,
       time: timeStr,
-      action: action,
-      location: location,
       rawMessage: message.trim()
-    });
+    };
+    allMessages.push(msgObj);
+
+    const action = detectAction(message);
+    if (!action) continue;
+
+    const location = extractLocation(message, action);
+    entries.push({ ...msgObj, action, location });
     parsedLines++;
   }
 
-  return { entries, totalLines, parsedLines };
+  return { allMessages, entries, totalLines, parsedLines };
 }
 
 function buildRecords(entries) {
@@ -928,38 +944,53 @@ function handleFile(file) {
   reader.readAsText(file, 'UTF-8');
 }
 
+// Tum ham mesajlardan entries/records'u yeniden olustur (ayarlar degisince cagirilir)
+function reprocessData() {
+  if (!store.allMessages || store.allMessages.length === 0) return;
+  store.entries = [];
+  for (const msg of store.allMessages) {
+    const action = detectAction(msg.rawMessage);
+    if (!action) continue;
+    const location = extractLocation(msg.rawMessage, action);
+    store.entries.push({ ...msg, action, location });
+  }
+  store.records = buildRecords(store.entries);
+  store.employees = [...new Set(store.entries.map(e => e.person))].sort();
+  saveStore();
+}
+
 function processText(text) {
   const result = parseWhatsAppExport(text);
   const resultDiv = document.getElementById('parseResult');
 
-  if (result.parsedLines === 0) {
+  if (result.allMessages.length === 0) {
     resultDiv.innerHTML = `<div class="parse-result parse-error">
-      Hicbir giris/cikis kaydi bulunamadi.<br>
-      <small>Toplam ${result.totalLines} satir incelendi. Anahtar kelimeleri kontrol edin veya ornek bir mesaj gosterin.</small>
+      Hicbir mesaj bulunamadi.<br>
+      <small>Toplam ${result.totalLines} satir incelendi. Dosya formati uygun mu kontrol edin.</small>
     </div>`;
     return;
   }
 
-  // Merge new entries with existing
-  const existingKeys = new Set(store.entries.map(e => `${e.person}|${e.date}|${e.time}|${e.action}`));
-  let newCount = 0;
-  for (const entry of result.entries) {
-    const key = `${entry.person}|${entry.date}|${entry.time}|${entry.action}`;
-    if (!existingKeys.has(key)) {
-      store.entries.push(entry);
-      newCount++;
+  // Ham mesajlari biriktir (tekrarsiz)
+  const existingMsgKeys = new Set(store.allMessages.map(m => `${m.person}|${m.date}|${m.time}|${m.rawMessage}`));
+  let newMsgCount = 0;
+  for (const msg of result.allMessages) {
+    const key = `${msg.person}|${msg.date}|${msg.time}|${msg.rawMessage}`;
+    if (!existingMsgKeys.has(key)) {
+      store.allMessages.push(msg);
+      newMsgCount++;
     }
   }
 
-  // Rebuild records
-  store.records = buildRecords(store.entries);
-  store.employees = [...new Set(store.entries.map(e => e.person))].sort();
+  // Entries ve records'u yeniden olustur
+  reprocessData();
   store.lastImport = new Date().toISOString();
   saveStore();
 
+  const actionCount = result.entries.length;
   resultDiv.innerHTML = `<div class="parse-result parse-success">
-    Basariyla islendi! ${result.totalLines} satir incelendi, ${result.parsedLines} giris/cikis kaydi bulundu.
-    ${newCount} yeni kayit eklendi.
+    Basariyla islendi! ${result.totalLines} satir, ${result.allMessages.length} mesaj bulundu, ${actionCount} giris/cikis tespit edildi.
+    ${newMsgCount} yeni mesaj eklendi. Toplam arsiv: ${store.allMessages.length} mesaj.
   </div>`;
 
   // Update quick stats
@@ -1311,7 +1342,7 @@ function importAllData(event) {
 
 function clearAllData() {
   if (!confirm('Tum mesai verileri silinecek. Emin misiniz?')) return;
-  store = { entries: [], records: [], employees: [], lastImport: null };
+  store = { allMessages: [], entries: [], records: [], employees: [], lastImport: null };
   saveStore();
   showToast('Tum veriler silindi', 'success');
   refreshAll();

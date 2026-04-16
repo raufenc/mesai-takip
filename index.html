@@ -457,7 +457,8 @@ tr:hover td { background: var(--gray-50); }
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
         <div class="card-title" style="margin:0" id="dailyTitle">Gunluk Mesai Tablosu</div>
         <div class="export-bar" style="margin:0">
-          <button class="btn btn-sm btn-outline" onclick="exportTable('dailyTable','gunluk_mesai')">CSV Indir</button>
+          <button class="btn btn-sm btn-outline" onclick="exportTable('dailyTable','gunluk_mesai')">CSV</button>
+          <button class="btn btn-sm btn-success" onclick="exportTableExcel('dailyTable','gunluk_mesai')">Excel</button>
           <button class="btn btn-sm btn-outline" onclick="window.print()">Yazdir</button>
         </div>
       </div>
@@ -494,7 +495,8 @@ tr:hover td { background: var(--gray-50); }
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
         <div class="card-title" style="margin:0">Haftalik Ozet</div>
         <div class="export-bar" style="margin:0">
-          <button class="btn btn-sm btn-outline" onclick="exportTable('weeklyTable','haftalik_mesai')">CSV Indir</button>
+          <button class="btn btn-sm btn-outline" onclick="exportTable('weeklyTable','haftalik_mesai')">CSV</button>
+          <button class="btn btn-sm btn-success" onclick="exportTableExcel('weeklyTable','haftalik_mesai')">Excel</button>
         </div>
       </div>
       <div class="table-wrap">
@@ -532,7 +534,8 @@ tr:hover td { background: var(--gray-50); }
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
         <div class="card-title" style="margin:0">Aylik Rapor</div>
         <div class="export-bar" style="margin:0">
-          <button class="btn btn-sm btn-outline" onclick="exportTable('monthlyTable','aylik_mesai')">CSV Indir</button>
+          <button class="btn btn-sm btn-outline" onclick="exportTable('monthlyTable','aylik_mesai')">CSV</button>
+          <button class="btn btn-sm btn-success" onclick="exportTableExcel('monthlyTable','aylik_mesai')">Excel</button>
         </div>
       </div>
       <div class="table-wrap">
@@ -558,7 +561,10 @@ tr:hover td { background: var(--gray-50); }
   <!-- ==================== EMPLOYEES ==================== -->
   <div class="section" id="sec-employees">
     <div class="card">
-      <div class="card-title">Calisanlar</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap">
+        <div class="card-title" style="margin:0">Calisanlar</div>
+        <div style="font-size:12px;color:var(--gray-400)">Ozel mesai saati icin saat girin (bos = genel ayar)</div>
+      </div>
       <div id="empList"></div>
     </div>
   </div>
@@ -588,6 +594,11 @@ tr:hover td { background: var(--gray-50); }
         <label>Cikis Anahtar Kelimeleri (virgulla ayirin)</label>
         <textarea id="setCikisKeys" onchange="saveSettings()">cikis,ciktim,gidiyorum,bitirdim,iyi aksamlar,cikis yaptim,ayriliyorum,bitti,eve gidiyorum,isim bitti,kapatiyorum</textarea>
         <div class="hint">Mesajda bu kelimelerden biri gecerse CIKIS sayilir</div>
+      </div>
+      <div class="setting-group">
+        <label>Ara Cikis (Sayilmayacak) Anahtar Kelimeleri (virgulla ayirin)</label>
+        <textarea id="setAraKeys" onchange="saveSettings()"></textarea>
+        <div class="hint">Bu kelimeler gecen mesajlar giris/cikis olarak sayilmaz (orn: sigara, kahve, market, eczane, wc, banka)</div>
       </div>
       <div class="setting-group">
         <label>Hafta Sonu Calisma</label>
@@ -637,6 +648,8 @@ let settings = {
   tolerance: 15,
   girisKeys: 'giris,geldim,geliyorum,basliyorum,gunaydin,hayirli sabahlar,sahadayim,isbasindayim,giris yaptim,geldik,varildi,buradayim',
   cikisKeys: 'cikis,ciktim,gidiyorum,bitirdim,iyi aksamlar,cikis yaptim,ayriliyorum,bitti,eve gidiyorum,isim bitti,kapatiyorum',
+  araKeys: '',
+  employeeHours: {},
   weekendDays: 5
 };
 
@@ -653,11 +666,14 @@ function loadSettings() {
   try {
     const d = localStorage.getItem(SETTINGS_KEY);
     if (d) settings = JSON.parse(d);
+    if (!settings.araKeys) settings.araKeys = '';
+    if (!settings.employeeHours) settings.employeeHours = {};
     document.getElementById('setStart').value = settings.startTime;
     document.getElementById('setEnd').value = settings.endTime;
     document.getElementById('setTolerance').value = settings.tolerance;
     document.getElementById('setGirisKeys').value = settings.girisKeys;
     document.getElementById('setCikisKeys').value = settings.cikisKeys;
+    document.getElementById('setAraKeys').value = settings.araKeys;
     document.getElementById('setWeekend').value = settings.weekendDays;
   } catch(e) {}
 }
@@ -667,6 +683,7 @@ function saveSettings() {
   settings.tolerance = parseInt(document.getElementById('setTolerance').value) || 15;
   settings.girisKeys = document.getElementById('setGirisKeys').value;
   settings.cikisKeys = document.getElementById('setCikisKeys').value;
+  settings.araKeys = document.getElementById('setAraKeys').value;
   settings.weekendDays = parseInt(document.getElementById('setWeekend').value);
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
 
@@ -766,6 +783,10 @@ function detectAction(message) {
     /ise?\s*gid/,        // ise gidiyorum
   ];
   if (workDestPatterns.some(p => p.test(norm))) return null; // is icin hareket, cikis degil
+
+  // ============ ADIM 5.5: KULLANICI TANIMLI ARA CIKIS KALIPLARI ============
+  const araKeys = settings.araKeys ? settings.araKeys.split(',').map(k => normalize(k.trim())).filter(Boolean) : [];
+  if (araKeys.length > 0 && araKeys.some(key => norm.includes(key))) return null;
 
   // ============ ADIM 6: AYNI MESAJDA HEM GIRIS HEM CIKIS KELIMESI ============
   const girisKeys = settings.girisKeys.split(',').map(k => normalize(k.trim())).filter(Boolean);
@@ -901,9 +922,11 @@ function buildRecords(entries) {
     }
 
     let lateMinutes = 0;
-    if (giris && settings.startTime) {
+    const empHours = settings.employeeHours && settings.employeeHours[g.person];
+    const empStart = empHours && empHours.start ? empHours.start : settings.startTime;
+    if (giris && empStart) {
       const [gh, gm] = giris.split(':').map(Number);
-      const [sh, sm] = settings.startTime.split(':').map(Number);
+      const [sh, sm] = empStart.split(':').map(Number);
       const diff = (gh * 60 + gm) - (sh * 60 + sm);
       if (diff > settings.tolerance) lateMinutes = diff;
     }
@@ -1005,7 +1028,7 @@ function processText(text) {
 
   // Show log preview
   showLogPreview(result.entries.slice(-50));
-  showToast(`${newCount} yeni kayit eklendi`, 'success');
+  showToast(`${newMsgCount} yeni kayit eklendi`, 'success');
 }
 
 function showLogPreview(entries) {
@@ -1268,6 +1291,7 @@ function renderEmployees() {
     const color = colors[i % colors.length];
     const firstDate = empRecords.length > 0 ? empRecords.sort((a,b) => a.date.localeCompare(b.date))[0].date : '';
     const lastDate = empRecords.length > 0 ? empRecords.sort((a,b) => b.date.localeCompare(a.date))[0].date : '';
+    const empH = (settings.employeeHours && settings.employeeHours[emp]) || {};
 
     return `<div class="emp-row">
       <div class="emp-avatar" style="background:${color}">${initial}</div>
@@ -1276,11 +1300,36 @@ function renderEmployees() {
         <div class="emp-detail">${totalDays} gun | ${totalHours.toFixed(0)} saat | Ort. ${avgHours} sa/gun${lateDays > 0 ? ' | ' + lateDays + ' gec kalma' : ''}</div>
         ${firstDate ? `<div class="emp-detail">${firstDate} - ${lastDate}</div>` : ''}
       </div>
+      <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+        <input type="time" value="${empH.start || ''}" placeholder="${settings.startTime}"
+          style="width:110px;padding:5px 8px;border:1px solid var(--gray-300);border-radius:6px;font-size:13px"
+          title="Giris saati (bos = genel ayar: ${settings.startTime})"
+          onchange="saveEmpHours('${emp.replace(/'/g,"\\'")}',this.value,null)">
+        <span style="color:var(--gray-400);font-size:12px">-</span>
+        <input type="time" value="${empH.end || ''}" placeholder="${settings.endTime}"
+          style="width:110px;padding:5px 8px;border:1px solid var(--gray-300);border-radius:6px;font-size:13px"
+          title="Cikis saati (bos = genel ayar: ${settings.endTime})"
+          onchange="saveEmpHours('${emp.replace(/'/g,"\\'")}',null,this.value)">
+      </div>
       <div>
         <span class="badge badge-info">${totalDays} gun</span>
       </div>
     </div>`;
   }).join('');
+}
+
+function saveEmpHours(emp, start, end) {
+  if (!settings.employeeHours) settings.employeeHours = {};
+  if (!settings.employeeHours[emp]) settings.employeeHours[emp] = {};
+  if (start !== null) settings.employeeHours[emp].start = start;
+  if (end !== null) settings.employeeHours[emp].end = end;
+  if (!settings.employeeHours[emp].start && !settings.employeeHours[emp].end) {
+    delete settings.employeeHours[emp];
+  }
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  reprocessData();
+  refreshAll();
+  showToast(emp + ' mesai saati guncellendi', 'success');
 }
 
 // ======================== EXPORT ========================
@@ -1304,6 +1353,16 @@ function exportTable(tableId, filename) {
   a.click();
   URL.revokeObjectURL(url);
   showToast('CSV indirildi', 'success');
+}
+
+function exportTableExcel(tableId, filename) {
+  const table = document.getElementById(tableId);
+  if (!table || table.rows.length <= 1) { showToast('Tablo bos', 'error'); return; }
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.table_to_sheet(table);
+  XLSX.utils.book_append_sheet(wb, ws, 'Rapor');
+  XLSX.writeFile(wb, filename + '_' + todayStr() + '.xlsx');
+  showToast('Excel indirildi', 'success');
 }
 
 function exportExcel() {

@@ -1,0 +1,1314 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mesai Takip Sistemi</title>
+<style>
+:root {
+  --primary: #1e40af;
+  --primary-light: #3b82f6;
+  --primary-dark: #1e3a8a;
+  --success: #059669;
+  --warning: #d97706;
+  --danger: #dc2626;
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  --gray-900: #111827;
+  --radius: 10px;
+  --shadow: 0 1px 3px rgba(0,0,0,.1), 0 1px 2px rgba(0,0,0,.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,.1), 0 4px 6px -2px rgba(0,0,0,.05);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--gray-100);
+  color: var(--gray-800);
+  min-height: 100vh;
+}
+
+/* HEADER */
+.header {
+  background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+  color: white;
+  padding: 0 24px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: var(--shadow-lg);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.header h1 { font-size: 20px; font-weight: 700; }
+.header-right { display: flex; gap: 12px; align-items: center; }
+
+/* NAV */
+.nav {
+  background: white;
+  border-bottom: 1px solid var(--gray-200);
+  display: flex;
+  gap: 0;
+  padding: 0 24px;
+  overflow-x: auto;
+}
+.nav-btn {
+  background: none;
+  border: none;
+  padding: 14px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gray-500);
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  white-space: nowrap;
+  transition: all .2s;
+}
+.nav-btn:hover { color: var(--primary); }
+.nav-btn.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+  font-weight: 600;
+}
+
+/* MAIN */
+.main { max-width: 1200px; margin: 0 auto; padding: 24px; }
+.section { display: none; }
+.section.active { display: block; }
+
+/* CARDS */
+.card {
+  background: white;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 24px;
+  margin-bottom: 20px;
+}
+.card-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: var(--gray-700);
+}
+
+/* STAT CARDS */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.stat-card {
+  background: white;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px;
+  text-align: center;
+}
+.stat-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--primary);
+}
+.stat-label {
+  font-size: 13px;
+  color: var(--gray-500);
+  margin-top: 4px;
+}
+.stat-card.success .stat-value { color: var(--success); }
+.stat-card.warning .stat-value { color: var(--warning); }
+.stat-card.danger .stat-value { color: var(--danger); }
+
+/* UPLOAD ZONE */
+.upload-zone {
+  border: 3px dashed var(--gray-300);
+  border-radius: var(--radius);
+  padding: 60px 40px;
+  text-align: center;
+  cursor: pointer;
+  transition: all .3s;
+  background: var(--gray-50);
+}
+.upload-zone:hover, .upload-zone.dragover {
+  border-color: var(--primary-light);
+  background: #eff6ff;
+}
+.upload-zone svg { width: 64px; height: 64px; margin-bottom: 16px; color: var(--gray-400); }
+.upload-zone h3 { font-size: 18px; margin-bottom: 8px; color: var(--gray-700); }
+.upload-zone p { color: var(--gray-500); font-size: 14px; }
+.upload-zone input { display: none; }
+
+/* TABLE */
+.table-wrap { overflow-x: auto; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+th {
+  background: var(--gray-50);
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--gray-600);
+  border-bottom: 2px solid var(--gray-200);
+  white-space: nowrap;
+}
+td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--gray-100);
+  color: var(--gray-700);
+}
+tr:hover td { background: var(--gray-50); }
+
+/* BADGES */
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.badge-success { background: #d1fae5; color: #065f46; }
+.badge-warning { background: #fef3c7; color: #92400e; }
+.badge-danger { background: #fee2e2; color: #991b1b; }
+.badge-info { background: #dbeafe; color: #1e40af; }
+.badge-gray { background: var(--gray-100); color: var(--gray-600); }
+
+/* BUTTONS */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: all .2s;
+}
+.btn-primary { background: var(--primary); color: white; }
+.btn-primary:hover { background: var(--primary-dark); }
+.btn-outline {
+  background: white;
+  color: var(--gray-700);
+  border: 1px solid var(--gray-300);
+}
+.btn-outline:hover { background: var(--gray-50); }
+.btn-sm { padding: 6px 12px; font-size: 13px; }
+.btn-danger { background: var(--danger); color: white; }
+.btn-danger:hover { background: #b91c1c; }
+.btn-success { background: var(--success); color: white; }
+.btn-success:hover { background: #047857; }
+
+/* DATE PICKER ROW */
+.filter-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.filter-row label { font-size: 14px; font-weight: 500; color: var(--gray-600); }
+.filter-row input, .filter-row select {
+  padding: 8px 12px;
+  border: 1px solid var(--gray-300);
+  border-radius: 8px;
+  font-size: 14px;
+  background: white;
+}
+
+/* PROGRESS */
+.progress-bar {
+  height: 8px;
+  background: var(--gray-200);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width .5s;
+}
+
+/* EMPLOYEE ROW */
+.emp-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--gray-100);
+}
+.emp-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 16px;
+  color: white;
+  flex-shrink: 0;
+}
+.emp-info { flex: 1; }
+.emp-name { font-weight: 600; font-size: 14px; }
+.emp-detail { font-size: 13px; color: var(--gray-500); }
+
+/* PARSE RESULT */
+.parse-result {
+  margin-top: 20px;
+  padding: 16px;
+  border-radius: var(--radius);
+  font-size: 14px;
+}
+.parse-success { background: #d1fae5; color: #065f46; }
+.parse-error { background: #fee2e2; color: #991b1b; }
+
+/* LOG VIEWER */
+.log-viewer {
+  background: var(--gray-900);
+  color: #a5f3fc;
+  border-radius: var(--radius);
+  padding: 16px;
+  font-family: 'SF Mono', 'Consolas', monospace;
+  font-size: 13px;
+  max-height: 300px;
+  overflow-y: auto;
+  line-height: 1.6;
+}
+.log-viewer .log-entry { margin-bottom: 2px; }
+.log-viewer .log-time { color: #94a3b8; }
+.log-viewer .log-name { color: #fbbf24; }
+.log-viewer .log-action-giris { color: #34d399; }
+.log-viewer .log-action-cikis { color: #f87171; }
+.log-viewer .log-action-other { color: #a78bfa; }
+
+/* SETTINGS */
+.setting-group { margin-bottom: 20px; }
+.setting-group label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gray-700);
+  margin-bottom: 6px;
+}
+.setting-group input, .setting-group textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--gray-300);
+  border-radius: 8px;
+  font-size: 14px;
+}
+.setting-group textarea { height: 80px; resize: vertical; font-family: monospace; }
+.setting-group .hint { font-size: 12px; color: var(--gray-400); margin-top: 4px; }
+
+/* MODAL */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.5);
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.show { display: flex; }
+.modal {
+  background: white;
+  border-radius: var(--radius);
+  padding: 24px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+.modal-title { font-size: 18px; font-weight: 600; margin-bottom: 16px; }
+
+/* EXPORT BTN */
+.export-bar {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+}
+
+/* TOAST */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  padding: 12px 20px;
+  border-radius: 8px;
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 300;
+  transform: translateY(100px);
+  opacity: 0;
+  transition: all .3s;
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast-success { background: var(--success); }
+.toast-error { background: var(--danger); }
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  .main { padding: 16px; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .nav { padding: 0 12px; }
+  .nav-btn { padding: 12px 14px; font-size: 13px; }
+  .header { padding: 0 16px; }
+  .upload-zone { padding: 40px 20px; }
+  .filter-row { flex-direction: column; align-items: stretch; }
+  .export-bar { flex-wrap: wrap; }
+}
+@media (max-width: 480px) {
+  .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat-card { padding: 14px; }
+  .stat-value { font-size: 24px; }
+}
+
+/* PRINT */
+@media print {
+  .header, .nav, .upload-zone, .btn, .filter-row, .export-bar { display: none !important; }
+  .section { display: block !important; }
+  .card { box-shadow: none; border: 1px solid #ddd; break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <h1>Mesai Takip</h1>
+  <div class="header-right">
+    <span id="headerDate" style="font-size:13px;opacity:.8"></span>
+    <button class="btn btn-sm" onclick="clearAllData()" style="background:rgba(255,255,255,.15);color:white;border:1px solid rgba(255,255,255,.3)">Verileri Sil</button>
+  </div>
+</div>
+
+<!-- NAV -->
+<div class="nav">
+  <button class="nav-btn active" data-tab="upload">Veri Yukle</button>
+  <button class="nav-btn" data-tab="daily">Gunluk</button>
+  <button class="nav-btn" data-tab="weekly">Haftalik</button>
+  <button class="nav-btn" data-tab="monthly">Aylik</button>
+  <button class="nav-btn" data-tab="employees">Calisanlar</button>
+  <button class="nav-btn" data-tab="settings">Ayarlar</button>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- ==================== UPLOAD ==================== -->
+  <div class="section active" id="sec-upload">
+    <div class="card">
+      <div class="card-title">WhatsApp Sohbet Dosyasi Yukle</div>
+      <div class="upload-zone" id="uploadZone">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+        </svg>
+        <h3>WhatsApp .txt dosyasini surukleyin veya tiklayin</h3>
+        <p>WhatsApp &gt; Grup &gt; &hellip; &gt; Daha Fazla &gt; Sohbeti Disa Aktar &gt; Medyasiz</p>
+        <input type="file" id="fileInput" accept=".txt,.zip">
+      </div>
+      <div id="parseResult"></div>
+    </div>
+
+    <!-- LOG PREVIEW -->
+    <div class="card" id="logPreviewCard" style="display:none">
+      <div class="card-title">Islenen Mesajlar (Son 50)</div>
+      <div class="log-viewer" id="logViewer"></div>
+    </div>
+
+    <!-- QUICK STATS AFTER UPLOAD -->
+    <div id="uploadStats" style="display:none">
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-value" id="usTotalMsg">0</div><div class="stat-label">Toplam Mesaj</div></div>
+        <div class="stat-card success"><div class="stat-value" id="usParsed">0</div><div class="stat-label">Islenen Kayit</div></div>
+        <div class="stat-card warning"><div class="stat-value" id="usEmployees">0</div><div class="stat-label">Calisan</div></div>
+        <div class="stat-card"><div class="stat-value" id="usDays">0</div><div class="stat-label">Gun</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== DAILY ==================== -->
+  <div class="section" id="sec-daily">
+    <div class="filter-row">
+      <label>Tarih:</label>
+      <input type="date" id="dailyDate" onchange="renderDaily()">
+      <button class="btn btn-sm btn-outline" onclick="dailyPrev()">&#9664; Onceki</button>
+      <button class="btn btn-sm btn-outline" onclick="dailyNext()">Sonraki &#9654;</button>
+      <button class="btn btn-sm btn-outline" onclick="dailyToday()">Bugun</button>
+    </div>
+    <div class="stats-grid" id="dailyStats"></div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <div class="card-title" style="margin:0" id="dailyTitle">Gunluk Mesai Tablosu</div>
+        <div class="export-bar" style="margin:0">
+          <button class="btn btn-sm btn-outline" onclick="exportTable('dailyTable','gunluk_mesai')">CSV Indir</button>
+          <button class="btn btn-sm btn-outline" onclick="window.print()">Yazdir</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table id="dailyTable">
+          <thead>
+            <tr>
+              <th>Calisan</th>
+              <th>Giris</th>
+              <th>Cikis</th>
+              <th>Toplam Saat</th>
+              <th>Gec Kalma</th>
+              <th>Konum</th>
+              <th>Durum</th>
+            </tr>
+          </thead>
+          <tbody id="dailyBody"></tbody>
+        </table>
+      </div>
+      <div id="dailyEmpty" style="display:none;text-align:center;padding:40px;color:var(--gray-400)">Bu tarihte kayit bulunamadi</div>
+    </div>
+  </div>
+
+  <!-- ==================== WEEKLY ==================== -->
+  <div class="section" id="sec-weekly">
+    <div class="filter-row">
+      <label>Hafta:</label>
+      <input type="week" id="weekPicker" onchange="renderWeekly()">
+      <button class="btn btn-sm btn-outline" onclick="weekPrev()">&#9664; Onceki</button>
+      <button class="btn btn-sm btn-outline" onclick="weekNext()">Sonraki &#9654;</button>
+    </div>
+    <div class="stats-grid" id="weeklyStats"></div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <div class="card-title" style="margin:0">Haftalik Ozet</div>
+        <div class="export-bar" style="margin:0">
+          <button class="btn btn-sm btn-outline" onclick="exportTable('weeklyTable','haftalik_mesai')">CSV Indir</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table id="weeklyTable">
+          <thead>
+            <tr>
+              <th>Calisan</th>
+              <th>Pzt</th>
+              <th>Sal</th>
+              <th>Car</th>
+              <th>Per</th>
+              <th>Cum</th>
+              <th>Cmt</th>
+              <th>Paz</th>
+              <th>Toplam</th>
+              <th>Ort. Giris</th>
+            </tr>
+          </thead>
+          <tbody id="weeklyBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MONTHLY ==================== -->
+  <div class="section" id="sec-monthly">
+    <div class="filter-row">
+      <label>Ay:</label>
+      <input type="month" id="monthPicker" onchange="renderMonthly()">
+      <button class="btn btn-sm btn-outline" onclick="monthPrev()">&#9664; Onceki</button>
+      <button class="btn btn-sm btn-outline" onclick="monthNext()">Sonraki &#9654;</button>
+    </div>
+    <div class="stats-grid" id="monthlyStats"></div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <div class="card-title" style="margin:0">Aylik Rapor</div>
+        <div class="export-bar" style="margin:0">
+          <button class="btn btn-sm btn-outline" onclick="exportTable('monthlyTable','aylik_mesai')">CSV Indir</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table id="monthlyTable">
+          <thead>
+            <tr>
+              <th>Calisan</th>
+              <th>Calisma Gunu</th>
+              <th>Devam</th>
+              <th>Devamsiz</th>
+              <th>Gec Kalma</th>
+              <th>Toplam Saat</th>
+              <th>Ort. Saat/Gun</th>
+              <th>Devam %</th>
+            </tr>
+          </thead>
+          <tbody id="monthlyBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== EMPLOYEES ==================== -->
+  <div class="section" id="sec-employees">
+    <div class="card">
+      <div class="card-title">Calisanlar</div>
+      <div id="empList"></div>
+    </div>
+  </div>
+
+  <!-- ==================== SETTINGS ==================== -->
+  <div class="section" id="sec-settings">
+    <div class="card">
+      <div class="card-title">Mesai Ayarlari</div>
+      <div class="setting-group">
+        <label>Mesai Baslangici</label>
+        <input type="time" id="setStart" value="08:30" onchange="saveSettings()">
+      </div>
+      <div class="setting-group">
+        <label>Mesai Bitisi</label>
+        <input type="time" id="setEnd" value="17:30" onchange="saveSettings()">
+      </div>
+      <div class="setting-group">
+        <label>Gec Kalma Toleransi (dakika)</label>
+        <input type="number" id="setTolerance" value="15" min="0" max="120" onchange="saveSettings()">
+      </div>
+      <div class="setting-group">
+        <label>Giris Anahtar Kelimeleri (virgulla ayirin)</label>
+        <textarea id="setGirisKeys" onchange="saveSettings()">giris,geldim,geliyorum,basliyorum,gunaydin,hayirli sabahlar,sahadayim,isbasindayim,giris yaptim,geldik,varildi,buradayim</textarea>
+        <div class="hint">Mesajda bu kelimelerden biri gecerse GIRIS sayilir</div>
+      </div>
+      <div class="setting-group">
+        <label>Cikis Anahtar Kelimeleri (virgulla ayirin)</label>
+        <textarea id="setCikisKeys" onchange="saveSettings()">cikis,ciktim,gidiyorum,bitirdim,iyi aksamlar,cikis yaptim,ayriliyorum,bitti,eve gidiyorum,isim bitti,kapatiyorum</textarea>
+        <div class="hint">Mesajda bu kelimelerden biri gecerse CIKIS sayilir</div>
+      </div>
+      <div class="setting-group">
+        <label>Hafta Sonu Calisma</label>
+        <select id="setWeekend" onchange="saveSettings()">
+          <option value="5">Pazartesi-Cuma (5 gun)</option>
+          <option value="6">Pazartesi-Cumartesi (6 gun)</option>
+          <option value="7">Her gun</option>
+        </select>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Veri Yonetimi</div>
+      <p style="font-size:14px;color:var(--gray-500);margin-bottom:12px">
+        Tum veriler tarayicinizda saklanir. Baska bir cihazdan erismek icin disa aktarin.
+      </p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="exportAllData()">Tum Veriyi Disa Aktar (JSON)</button>
+        <button class="btn btn-outline" onclick="document.getElementById('importInput').click()">Veri Ice Aktar</button>
+        <input type="file" id="importInput" accept=".json" style="display:none" onchange="importAllData(event)">
+        <button class="btn btn-danger" onclick="clearAllData()">Tum Verileri Sil</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ======================== DATA STORE ========================
+const STORAGE_KEY = 'mesai_data';
+const SETTINGS_KEY = 'mesai_settings';
+
+let store = {
+  entries: [],      // parsed WhatsApp entries
+  records: [],      // daily attendance records
+  employees: [],    // unique employee list
+  lastImport: null
+};
+
+let settings = {
+  startTime: '08:30',
+  endTime: '17:30',
+  tolerance: 15,
+  girisKeys: 'giris,geldim,geliyorum,basliyorum,gunaydin,hayirli sabahlar,sahadayim,isbasindayim,giris yaptim,geldik,varildi,buradayim',
+  cikisKeys: 'cikis,ciktim,gidiyorum,bitirdim,iyi aksamlar,cikis yaptim,ayriliyorum,bitti,eve gidiyorum,isim bitti,kapatiyorum',
+  weekendDays: 5
+};
+
+function loadStore() {
+  try {
+    const d = localStorage.getItem(STORAGE_KEY);
+    if (d) store = JSON.parse(d);
+  } catch(e) {}
+}
+function saveStore() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+}
+function loadSettings() {
+  try {
+    const d = localStorage.getItem(SETTINGS_KEY);
+    if (d) settings = JSON.parse(d);
+    document.getElementById('setStart').value = settings.startTime;
+    document.getElementById('setEnd').value = settings.endTime;
+    document.getElementById('setTolerance').value = settings.tolerance;
+    document.getElementById('setGirisKeys').value = settings.girisKeys;
+    document.getElementById('setCikisKeys').value = settings.cikisKeys;
+    document.getElementById('setWeekend').value = settings.weekendDays;
+  } catch(e) {}
+}
+function saveSettings() {
+  settings.startTime = document.getElementById('setStart').value;
+  settings.endTime = document.getElementById('setEnd').value;
+  settings.tolerance = parseInt(document.getElementById('setTolerance').value) || 15;
+  settings.girisKeys = document.getElementById('setGirisKeys').value;
+  settings.cikisKeys = document.getElementById('setCikisKeys').value;
+  settings.weekendDays = parseInt(document.getElementById('setWeekend').value);
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  showToast('Ayarlar kaydedildi', 'success');
+}
+
+// ======================== WHATSAPP PARSER ========================
+function normalize(text) {
+  return text.toLowerCase()
+    .replace(/\u00e7/g,'c').replace(/\u011f/g,'g').replace(/\u0131/g,'i')
+    .replace(/\u00f6/g,'o').replace(/\u015f/g,'s').replace(/\u00fc/g,'u')
+    .replace(/\u00c7/g,'c').replace(/\u011e/g,'g').replace(/\u0130/g,'i')
+    .replace(/\u00d6/g,'o').replace(/\u015e/g,'s').replace(/\u00dc/g,'u')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
+function detectAction(message) {
+  const norm = normalize(message);
+  const girisKeys = settings.girisKeys.split(',').map(k => normalize(k.trim())).filter(Boolean);
+  const cikisKeys = settings.cikisKeys.split(',').map(k => normalize(k.trim())).filter(Boolean);
+
+  for (const key of cikisKeys) {
+    if (norm.includes(key)) return 'cikis';
+  }
+  for (const key of girisKeys) {
+    if (norm.includes(key)) return 'giris';
+  }
+  return null;
+}
+
+function extractLocation(message, action) {
+  const norm = normalize(message);
+  // Remove the action keyword and see what's left
+  let remaining = message;
+  const allKeys = [...settings.girisKeys.split(','), ...settings.cikisKeys.split(',')].map(k => k.trim()).filter(Boolean);
+  for (const key of allKeys) {
+    const regex = new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+    remaining = remaining.replace(regex, '');
+  }
+  remaining = remaining.replace(/[,.\-:;!?]+/g, ' ').trim();
+  if (remaining.length > 2 && remaining.length < 60) return remaining;
+  return '';
+}
+
+function parseWhatsAppExport(text) {
+  const lines = text.split('\n');
+  const entries = [];
+
+  // Multiple WhatsApp formats:
+  // Format 1: [DD.MM.YYYY, HH:MM:SS] Name: Message
+  // Format 2: DD.MM.YYYY HH:MM - Name: Message
+  // Format 3: DD/MM/YYYY, HH:MM - Name: Message
+  // Format 4: [DD/MM/YYYY HH:MM:SS] Name: Message
+
+  const patterns = [
+    /^\[(\d{1,2})[./](\d{1,2})[./](\d{2,4}),?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\]\s+([^:]+):\s+(.+)/,
+    /^(\d{1,2})[./](\d{1,2})[./](\d{2,4}),?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*[-\u2013]\s*([^:]+):\s+(.+)/,
+    /^(\d{1,2})\/(\d{1,2})\/(\d{2,4}),?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*[-\u2013]\s*([^:]+):\s+(.+)/,
+  ];
+
+  let totalLines = 0;
+  let parsedLines = 0;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    totalLines++;
+
+    let match = null;
+    for (const pat of patterns) {
+      match = trimmed.match(pat);
+      if (match) break;
+    }
+    if (!match) continue;
+
+    const [, d, m, y, h, min, , name, message] = match;
+    const year = y.length === 2 ? 2000 + parseInt(y) : parseInt(y);
+    const dateStr = `${year}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+    const timeStr = `${h.padStart(2,'0')}:${min.padStart(2,'0')}`;
+
+    // Skip system messages
+    const sysKeywords = ['ekledi', 'ayrildi', 'silindi', 'degistirdi', 'olusturdu', 'sifreleme', 'grup simge'];
+    const normMsg = normalize(message);
+    if (sysKeywords.some(k => normMsg.includes(k))) continue;
+    if (name.includes('+') && name.match(/\d{10,}/)) {
+      // phone number only — include anyway (some people don't have contact names)
+    }
+
+    const action = detectAction(message);
+    if (!action) continue; // only keep giriş/çıkış messages
+
+    const location = extractLocation(message, action);
+
+    entries.push({
+      person: name.trim(),
+      date: dateStr,
+      time: timeStr,
+      action: action,
+      location: location,
+      rawMessage: message.trim()
+    });
+    parsedLines++;
+  }
+
+  return { entries, totalLines, parsedLines };
+}
+
+function buildRecords(entries) {
+  // Group by person + date
+  const grouped = {};
+  for (const e of entries) {
+    const key = `${e.person}|${e.date}`;
+    if (!grouped[key]) grouped[key] = { person: e.person, date: e.date, events: [] };
+    grouped[key].events.push(e);
+  }
+
+  const records = [];
+  for (const key of Object.keys(grouped)) {
+    const g = grouped[key];
+    g.events.sort((a,b) => a.time.localeCompare(b.time));
+
+    const girisEvents = g.events.filter(e => e.action === 'giris');
+    const cikisEvents = g.events.filter(e => e.action === 'cikis');
+
+    const giris = girisEvents.length > 0 ? girisEvents[0].time : null;
+    const cikis = cikisEvents.length > 0 ? cikisEvents[cikisEvents.length - 1].time : null;
+    const location = girisEvents[0]?.location || cikisEvents[0]?.location || '';
+
+    let totalHours = 0;
+    if (giris && cikis) {
+      const [gh, gm] = giris.split(':').map(Number);
+      const [ch, cm] = cikis.split(':').map(Number);
+      totalHours = Math.max(0, (ch * 60 + cm - gh * 60 - gm) / 60);
+    }
+
+    let lateMinutes = 0;
+    if (giris && settings.startTime) {
+      const [gh, gm] = giris.split(':').map(Number);
+      const [sh, sm] = settings.startTime.split(':').map(Number);
+      const diff = (gh * 60 + gm) - (sh * 60 + sm);
+      if (diff > settings.tolerance) lateMinutes = diff;
+    }
+
+    records.push({
+      person: g.person,
+      date: g.date,
+      giris,
+      cikis,
+      totalHours: Math.round(totalHours * 100) / 100,
+      lateMinutes,
+      location,
+      events: g.events
+    });
+  }
+
+  return records;
+}
+
+// ======================== FILE UPLOAD ========================
+const uploadZone = document.getElementById('uploadZone');
+const fileInput = document.getElementById('fileInput');
+
+uploadZone.addEventListener('click', () => fileInput.click());
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('dragover');
+  handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+
+function handleFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    processText(e.target.result);
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function processText(text) {
+  const result = parseWhatsAppExport(text);
+  const resultDiv = document.getElementById('parseResult');
+
+  if (result.parsedLines === 0) {
+    resultDiv.innerHTML = `<div class="parse-result parse-error">
+      Hicbir giris/cikis kaydi bulunamadi.<br>
+      <small>Toplam ${result.totalLines} satir incelendi. Anahtar kelimeleri kontrol edin veya ornek bir mesaj gosterin.</small>
+    </div>`;
+    return;
+  }
+
+  // Merge new entries with existing
+  const existingKeys = new Set(store.entries.map(e => `${e.person}|${e.date}|${e.time}|${e.action}`));
+  let newCount = 0;
+  for (const entry of result.entries) {
+    const key = `${entry.person}|${entry.date}|${entry.time}|${entry.action}`;
+    if (!existingKeys.has(key)) {
+      store.entries.push(entry);
+      newCount++;
+    }
+  }
+
+  // Rebuild records
+  store.records = buildRecords(store.entries);
+  store.employees = [...new Set(store.entries.map(e => e.person))].sort();
+  store.lastImport = new Date().toISOString();
+  saveStore();
+
+  resultDiv.innerHTML = `<div class="parse-result parse-success">
+    Basariyla islendi! ${result.totalLines} satir incelendi, ${result.parsedLines} giris/cikis kaydi bulundu.
+    ${newCount} yeni kayit eklendi.
+  </div>`;
+
+  // Update quick stats
+  document.getElementById('uploadStats').style.display = 'block';
+  document.getElementById('usTotalMsg').textContent = result.totalLines;
+  document.getElementById('usParsed').textContent = store.entries.length;
+  document.getElementById('usEmployees').textContent = store.employees.length;
+  const dates = [...new Set(store.entries.map(e => e.date))];
+  document.getElementById('usDays').textContent = dates.length;
+
+  // Show log preview
+  showLogPreview(result.entries.slice(-50));
+  showToast(`${newCount} yeni kayit eklendi`, 'success');
+}
+
+function showLogPreview(entries) {
+  const card = document.getElementById('logPreviewCard');
+  const viewer = document.getElementById('logViewer');
+  card.style.display = 'block';
+  viewer.innerHTML = entries.map(e => {
+    const actionClass = e.action === 'giris' ? 'log-action-giris' : 'log-action-cikis';
+    const actionText = e.action === 'giris' ? 'GIRIS' : 'CIKIS';
+    return `<div class="log-entry"><span class="log-time">${e.date} ${e.time}</span> <span class="log-name">${e.person}</span> <span class="${actionClass}">[${actionText}]</span> ${e.location ? '@ ' + e.location : ''}</div>`;
+  }).join('');
+  viewer.scrollTop = viewer.scrollHeight;
+}
+
+// ======================== DAILY VIEW ========================
+function renderDaily() {
+  const dateInput = document.getElementById('dailyDate');
+  const date = dateInput.value;
+  if (!date) return;
+
+  const dayRecords = store.records.filter(r => r.date === date);
+  const body = document.getElementById('dailyBody');
+  const empty = document.getElementById('dailyEmpty');
+  const statsDiv = document.getElementById('dailyStats');
+
+  const dayName = new Date(date).toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  document.getElementById('dailyTitle').textContent = dayName;
+
+  if (dayRecords.length === 0) {
+    body.innerHTML = '';
+    empty.style.display = 'block';
+    statsDiv.innerHTML = '';
+    return;
+  }
+  empty.style.display = 'none';
+
+  // Stats
+  const totalEmp = store.employees.length;
+  const present = dayRecords.length;
+  const absent = totalEmp - present;
+  const late = dayRecords.filter(r => r.lateMinutes > 0).length;
+  const avgHours = dayRecords.length > 0 ? (dayRecords.reduce((s,r) => s + r.totalHours, 0) / dayRecords.length).toFixed(1) : 0;
+
+  statsDiv.innerHTML = `
+    <div class="stat-card success"><div class="stat-value">${present}</div><div class="stat-label">Gelen</div></div>
+    <div class="stat-card danger"><div class="stat-value">${absent}</div><div class="stat-label">Gelmeyen</div></div>
+    <div class="stat-card warning"><div class="stat-value">${late}</div><div class="stat-label">Gec Kalan</div></div>
+    <div class="stat-card"><div class="stat-value">${avgHours}</div><div class="stat-label">Ort. Saat</div></div>
+  `;
+
+  body.innerHTML = dayRecords
+    .sort((a,b) => (a.giris || '99:99').localeCompare(b.giris || '99:99'))
+    .map(r => {
+      let status, statusClass;
+      if (!r.giris) { status = 'Eksik'; statusClass = 'badge-warning'; }
+      else if (r.lateMinutes > 0) { status = 'Gec'; statusClass = 'badge-warning'; }
+      else { status = 'Zamaninda'; statusClass = 'badge-success'; }
+      if (!r.cikis) { status += ' (Cikis yok)'; statusClass = 'badge-warning'; }
+
+      return `<tr>
+        <td><strong>${r.person}</strong></td>
+        <td>${r.giris || '-'}</td>
+        <td>${r.cikis || '-'}</td>
+        <td>${r.totalHours > 0 ? r.totalHours.toFixed(1) + ' sa' : '-'}</td>
+        <td>${r.lateMinutes > 0 ? r.lateMinutes + ' dk' : '-'}</td>
+        <td>${r.location || '-'}</td>
+        <td><span class="badge ${statusClass}">${status}</span></td>
+      </tr>`;
+    }).join('');
+}
+
+function dailyPrev() {
+  const d = document.getElementById('dailyDate');
+  const dt = new Date(d.value); dt.setDate(dt.getDate()-1);
+  d.value = dt.toISOString().split('T')[0]; renderDaily();
+}
+function dailyNext() {
+  const d = document.getElementById('dailyDate');
+  const dt = new Date(d.value); dt.setDate(dt.getDate()+1);
+  d.value = dt.toISOString().split('T')[0]; renderDaily();
+}
+function dailyToday() {
+  document.getElementById('dailyDate').value = todayStr(); renderDaily();
+}
+
+// ======================== WEEKLY VIEW ========================
+function getWeekDates(weekStr) {
+  // weekStr = "2026-W16"
+  const [y, w] = weekStr.split('-W').map(Number);
+  const jan4 = new Date(y, 0, 4);
+  const dayOfWeek = jan4.getDay() || 7;
+  const firstMonday = new Date(jan4);
+  firstMonday.setDate(jan4.getDate() - dayOfWeek + 1);
+  const weekStart = new Date(firstMonday);
+  weekStart.setDate(firstMonday.getDate() + (w - 1) * 7);
+  const dates = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(weekStart);
+    d.setDate(weekStart.getDate() + i);
+    dates.push(d.toISOString().split('T')[0]);
+  }
+  return dates;
+}
+
+function renderWeekly() {
+  const picker = document.getElementById('weekPicker');
+  if (!picker.value) return;
+  const dates = getWeekDates(picker.value);
+  const body = document.getElementById('weeklyBody');
+  const statsDiv = document.getElementById('weeklyStats');
+
+  const rows = [];
+  let totalHoursAll = 0;
+  let totalDaysAll = 0;
+
+  for (const emp of store.employees) {
+    const cells = [];
+    let empTotal = 0;
+    let girisCount = 0;
+    let girisSum = 0;
+    for (const date of dates) {
+      const rec = store.records.find(r => r.person === emp && r.date === date);
+      if (rec) {
+        const h = rec.totalHours;
+        empTotal += h;
+        const cls = rec.lateMinutes > 0 ? 'style="color:var(--warning)"' : '';
+        cells.push(`<td ${cls}>${h > 0 ? h.toFixed(1) : (rec.giris ? 'G' : '-')}</td>`);
+        if (rec.giris) {
+          const [gh,gm] = rec.giris.split(':').map(Number);
+          girisSum += gh * 60 + gm;
+          girisCount++;
+        }
+      } else {
+        cells.push('<td style="color:var(--gray-300)">-</td>');
+      }
+    }
+    totalHoursAll += empTotal;
+    const daysWorked = store.records.filter(r => r.person === emp && dates.includes(r.date) && r.giris).length;
+    totalDaysAll += daysWorked;
+    const avgGiris = girisCount > 0 ? `${Math.floor(girisSum/girisCount/60)}:${String(Math.round(girisSum/girisCount%60)).padStart(2,'0')}` : '-';
+
+    rows.push(`<tr><td><strong>${emp}</strong></td>${cells.join('')}<td><strong>${empTotal.toFixed(1)}</strong></td><td>${avgGiris}</td></tr>`);
+  }
+
+  body.innerHTML = rows.join('');
+
+  statsDiv.innerHTML = `
+    <div class="stat-card"><div class="stat-value">${store.employees.length}</div><div class="stat-label">Calisan</div></div>
+    <div class="stat-card success"><div class="stat-value">${totalHoursAll.toFixed(0)}</div><div class="stat-label">Toplam Saat</div></div>
+    <div class="stat-card"><div class="stat-value">${totalDaysAll}</div><div class="stat-label">Toplam Giris</div></div>
+    <div class="stat-card"><div class="stat-value">${store.employees.length > 0 ? (totalHoursAll/store.employees.length).toFixed(1) : 0}</div><div class="stat-label">Ort. Saat/Kisi</div></div>
+  `;
+}
+
+function weekPrev() {
+  const p = document.getElementById('weekPicker');
+  let [y, w] = p.value.split('-W').map(Number);
+  w--; if (w < 1) { y--; w = 52; }
+  p.value = `${y}-W${String(w).padStart(2,'0')}`; renderWeekly();
+}
+function weekNext() {
+  const p = document.getElementById('weekPicker');
+  let [y, w] = p.value.split('-W').map(Number);
+  w++; if (w > 52) { y++; w = 1; }
+  p.value = `${y}-W${String(w).padStart(2,'0')}`; renderWeekly();
+}
+
+// ======================== MONTHLY VIEW ========================
+function renderMonthly() {
+  const picker = document.getElementById('monthPicker');
+  if (!picker.value) return;
+  const [year, month] = picker.value.split('-').map(Number);
+  const body = document.getElementById('monthlyBody');
+  const statsDiv = document.getElementById('monthlyStats');
+
+  // Calculate working days in month
+  const daysInMonth = new Date(year, month, 0).getDate();
+  let workDays = 0;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dow = new Date(year, month - 1, d).getDay();
+    if (settings.weekendDays === 7) workDays++;
+    else if (settings.weekendDays === 6 && dow !== 0) workDays++;
+    else if (settings.weekendDays === 5 && dow !== 0 && dow !== 6) workDays++;
+  }
+
+  const monthPrefix = `${year}-${String(month).padStart(2,'0')}`;
+  const rows = [];
+  let totalPresent = 0;
+  let totalHours = 0;
+  let totalLate = 0;
+
+  for (const emp of store.employees) {
+    const empRecords = store.records.filter(r => r.person === emp && r.date.startsWith(monthPrefix));
+    const present = empRecords.filter(r => r.giris).length;
+    const absent = workDays - present;
+    const late = empRecords.filter(r => r.lateMinutes > 0).length;
+    const hours = empRecords.reduce((s,r) => s + r.totalHours, 0);
+    const avgHoursPerDay = present > 0 ? (hours / present).toFixed(1) : 0;
+    const pct = workDays > 0 ? Math.round(present / workDays * 100) : 0;
+
+    totalPresent += present;
+    totalHours += hours;
+    totalLate += late;
+
+    const pctColor = pct >= 90 ? 'badge-success' : pct >= 70 ? 'badge-warning' : 'badge-danger';
+
+    rows.push(`<tr>
+      <td><strong>${emp}</strong></td>
+      <td>${workDays}</td>
+      <td>${present}</td>
+      <td>${absent > 0 ? absent : '-'}</td>
+      <td>${late > 0 ? late + ' gun' : '-'}</td>
+      <td>${hours.toFixed(1)} sa</td>
+      <td>${avgHoursPerDay} sa</td>
+      <td><span class="badge ${pctColor}">%${pct}</span></td>
+    </tr>`);
+  }
+
+  body.innerHTML = rows.join('');
+
+  const empCount = store.employees.length;
+  statsDiv.innerHTML = `
+    <div class="stat-card"><div class="stat-value">${workDays}</div><div class="stat-label">Is Gunu</div></div>
+    <div class="stat-card success"><div class="stat-value">${totalHours.toFixed(0)}</div><div class="stat-label">Toplam Saat</div></div>
+    <div class="stat-card warning"><div class="stat-value">${totalLate}</div><div class="stat-label">Gec Kalma</div></div>
+    <div class="stat-card"><div class="stat-value">${empCount > 0 ? Math.round(totalPresent/empCount) : 0}</div><div class="stat-label">Ort. Devam/Kisi</div></div>
+  `;
+}
+
+function monthPrev() {
+  const p = document.getElementById('monthPicker');
+  let [y, m] = p.value.split('-').map(Number);
+  m--; if (m < 1) { y--; m = 12; }
+  p.value = `${y}-${String(m).padStart(2,'0')}`; renderMonthly();
+}
+function monthNext() {
+  const p = document.getElementById('monthPicker');
+  let [y, m] = p.value.split('-').map(Number);
+  m++; if (m > 12) { y++; m = 1; }
+  p.value = `${y}-${String(m).padStart(2,'0')}`; renderMonthly();
+}
+
+// ======================== EMPLOYEES VIEW ========================
+function renderEmployees() {
+  const list = document.getElementById('empList');
+  if (store.employees.length === 0) {
+    list.innerHTML = '<p style="text-align:center;color:var(--gray-400);padding:40px">Henuz calisan kaydi yok. WhatsApp dosyasi yukleyin.</p>';
+    return;
+  }
+
+  const colors = ['#1e40af','#059669','#d97706','#dc2626','#7c3aed','#0891b2','#c2410c','#4f46e5','#0d9488','#9333ea','#b91c1c','#0369a1'];
+
+  list.innerHTML = store.employees.map((emp, i) => {
+    const empRecords = store.records.filter(r => r.person === emp);
+    const totalDays = empRecords.filter(r => r.giris).length;
+    const totalHours = empRecords.reduce((s,r) => s + r.totalHours, 0);
+    const avgHours = totalDays > 0 ? (totalHours / totalDays).toFixed(1) : 0;
+    const lateDays = empRecords.filter(r => r.lateMinutes > 0).length;
+    const initial = emp.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+    const color = colors[i % colors.length];
+    const firstDate = empRecords.length > 0 ? empRecords.sort((a,b) => a.date.localeCompare(b.date))[0].date : '';
+    const lastDate = empRecords.length > 0 ? empRecords.sort((a,b) => b.date.localeCompare(a.date))[0].date : '';
+
+    return `<div class="emp-row">
+      <div class="emp-avatar" style="background:${color}">${initial}</div>
+      <div class="emp-info">
+        <div class="emp-name">${emp}</div>
+        <div class="emp-detail">${totalDays} gun | ${totalHours.toFixed(0)} saat | Ort. ${avgHours} sa/gun${lateDays > 0 ? ' | ' + lateDays + ' gec kalma' : ''}</div>
+        ${firstDate ? `<div class="emp-detail">${firstDate} - ${lastDate}</div>` : ''}
+      </div>
+      <div>
+        <span class="badge badge-info">${totalDays} gun</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ======================== EXPORT ========================
+function exportTable(tableId, filename) {
+  const table = document.getElementById(tableId);
+  if (!table) return;
+  const rows = [];
+  for (const row of table.rows) {
+    const cells = [];
+    for (const cell of row.cells) {
+      cells.push('"' + cell.textContent.replace(/"/g, '""') + '"');
+    }
+    rows.push(cells.join(','));
+  }
+  const bom = '\uFEFF'; // UTF-8 BOM for Turkish chars in Excel
+  const blob = new Blob([bom + rows.join('\n')], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${filename}_${todayStr()}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('CSV indirildi', 'success');
+}
+
+function exportAllData() {
+  const blob = new Blob([JSON.stringify({ store, settings }, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `mesai_yedek_${todayStr()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Yedek indirildi', 'success');
+}
+
+function importAllData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (data.store) {
+        store = data.store;
+        saveStore();
+      }
+      if (data.settings) {
+        settings = data.settings;
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+        loadSettings();
+      }
+      showToast('Veri ice aktarildi', 'success');
+      refreshAll();
+    } catch(err) {
+      showToast('Gecersiz dosya: ' + err.message, 'error');
+    }
+  };
+  reader.readAsText(file);
+}
+
+function clearAllData() {
+  if (!confirm('Tum mesai verileri silinecek. Emin misiniz?')) return;
+  store = { entries: [], records: [], employees: [], lastImport: null };
+  saveStore();
+  showToast('Tum veriler silindi', 'success');
+  refreshAll();
+}
+
+// ======================== NAVIGATION ========================
+document.querySelectorAll('.nav-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('sec-' + btn.dataset.tab).classList.add('active');
+
+    // Refresh the view
+    if (btn.dataset.tab === 'daily') renderDaily();
+    else if (btn.dataset.tab === 'weekly') renderWeekly();
+    else if (btn.dataset.tab === 'monthly') renderMonthly();
+    else if (btn.dataset.tab === 'employees') renderEmployees();
+  });
+});
+
+// ======================== HELPERS ========================
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function currentWeekStr() {
+  const d = new Date();
+  const jan1 = new Date(d.getFullYear(), 0, 1);
+  const days = Math.floor((d - jan1) / 86400000);
+  const week = Math.ceil((days + jan1.getDay() + 1) / 7);
+  return `${d.getFullYear()}-W${String(week).padStart(2,'0')}`;
+}
+
+function currentMonthStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+
+function showToast(msg, type) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.className = 'toast toast-' + type + ' show';
+  setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+function refreshAll() {
+  const dateInput = document.getElementById('dailyDate');
+  if (!dateInput.value) dateInput.value = todayStr();
+  renderDaily();
+  renderWeekly();
+  renderMonthly();
+  renderEmployees();
+}
+
+// ======================== INIT ========================
+function init() {
+  loadStore();
+  loadSettings();
+
+  // Set defaults
+  document.getElementById('dailyDate').value = todayStr();
+  document.getElementById('weekPicker').value = currentWeekStr();
+  document.getElementById('monthPicker').value = currentMonthStr();
+  document.getElementById('headerDate').textContent = new Date().toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+  // If we have data, show stats on upload page
+  if (store.entries.length > 0) {
+    document.getElementById('uploadStats').style.display = 'block';
+    document.getElementById('usTotalMsg').textContent = '-';
+    document.getElementById('usParsed').textContent = store.entries.length;
+    document.getElementById('usEmployees').textContent = store.employees.length;
+    document.getElementById('usDays').textContent = [...new Set(store.entries.map(e => e.date))].length;
+    showLogPreview(store.entries.slice(-50));
+  }
+
+  refreshAll();
+}
+
+init();
+</script>
+</body>
+</html>

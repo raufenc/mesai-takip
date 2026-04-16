@@ -682,28 +682,98 @@ function normalize(text) {
 function detectAction(message) {
   const norm = normalize(message);
 
-  // "gidip geldim", "gittim geldim" gibi ifadeler cikis DEGIL
-  const ignorePatterns = [
-    /gidip.*gel/,    // gidip geldim, gidip geliyorum
-    /gittim.*gel/,   // gittim geldim
-    /gidip.*don/,    // gidip dondum
-    /gittim.*don/,   // gittim dondum
-    /gidip.*bura/,   // gidip buradayim
+  // ============ ADIM 1: DONUS KALIPLARI — cikis DEGIL ============
+  // Kisi bir yere gidip geri donmus, hala iste demektir
+  const comebackPatterns = [
+    /gidip.*gel/,       // gidip geldim, gidip geliyorum
+    /gittim.*gel/,      // gittim geldim
+    /gidip.*don/,       // gidip dondum
+    /gittim.*don/,      // gittim dondum
+    /gidip.*bura/,      // gidip buradayim
+    /cikip.*gel/,       // cikip geldim
+    /ciktim.*gel/,      // ciktim geldim (ogleye ciktim geldim)
+    /cikip.*don/,       // cikip dondum
+    /ciktim.*don/,      // ciktim dondum
+    /almaya.*gittim/,   // malzeme almaya gittim (devami gelirse geldim olur)
+    /almaya.*gidip/,    // almaya gidip geldim
+    /ugradim.*gel/,     // ugradim geldim
+    /ugrayi?p.*gel/,    // ugrayip geldim
   ];
-  const isIgnored = ignorePatterns.some(p => p.test(norm));
+  const isComeBack = comebackPatterns.some(p => p.test(norm));
 
+  // ============ ADIM 2: OGLE / MOLA KALIPLARI ============
+  const lunchBreakPatterns = [
+    /ogle.*ara/,        // ogle arasi
+    /yemeg?e.*cik/,     // yemege cikiyorum
+    /mola/,             // mola
+    /ogle.*cik/,        // ogleye ciktim
+  ];
+  const lunchReturnPatterns = [
+    /ogle.*don/,        // ogleden dondum
+    /ogle.*gel/,        // ogleden geldim
+    /yemek.*don/,       // yemekten dondum
+    /yemek.*gel/,       // yemekten geldim
+    /mola.*bit/,        // molam bitti
+  ];
+  if (lunchReturnPatterns.some(p => p.test(norm))) return null; // donus — ayri sayma
+  if (lunchBreakPatterns.some(p => p.test(norm))) return null;  // mola — ayri sayma
+
+  // ============ ADIM 3: KESIN CIKIS KALIPLARI ============
+  const clearCikisPatterns = [
+    /eve?\s*(gid|don|ayril|gel)/,    // eve gidiyorum, eve donuyorum
+    /evime?\s*(gid|don|gel)/,        // evime gidiyorum
+    /is(im)?\s*bitti/,               // isim bitti, is bitti
+    /paydos/,                         // paydos
+    /mesai\s*bit/,                    // mesai bitti
+    /gun\s*bit/,                      // gun bitti
+    /kapatiyorum/,                    // kapatiyorum
+  ];
+  if (clearCikisPatterns.some(p => p.test(norm))) return 'cikis';
+
+  // ============ ADIM 4: DONUS MESAJIYSA → giri$/mevcut, cikis degil ============
+  if (isComeBack) {
+    // iceride "geldim/dondum" varsa giris say, yoksa yoksay
+    if (/gel|don|bura/.test(norm)) return 'giris';
+    return null;
+  }
+
+  // ============ ADIM 5: IS AMACIYLA GITME — cikis DEGIL ============
+  // "sahaya gidiyorum", "santiyeye gidiyorum" = hala calisiyor
+  const workDestPatterns = [
+    /sahaya?\s*gid/,     // sahaya gidiyorum
+    /santiye.*gid/,      // santiyeye gidiyorum
+    /toplanti.*gid/,     // toplantiya gidiyorum
+    /muster.*gid/,       // musteriye gidiyorum
+    /siteye?\s*gid/,     // siteye gidiyorum
+    /depoya?\s*gid/,     // depoya gidiyorum
+    /ofise?\s*gid/,      // ofise gidiyorum
+    /ise?\s*gid/,        // ise gidiyorum
+  ];
+  if (workDestPatterns.some(p => p.test(norm))) return null; // is icin hareket, cikis degil
+
+  // ============ ADIM 6: AYNI MESAJDA HEM GIRIS HEM CIKIS KELIMESI ============
   const girisKeys = settings.girisKeys.split(',').map(k => normalize(k.trim())).filter(Boolean);
   const cikisKeys = settings.cikisKeys.split(',').map(k => normalize(k.trim())).filter(Boolean);
 
-  // Eger ignore pattern'e uyuyorsa, cikis olarak sayma — sadece giris kontrolu yap
-  if (!isIgnored) {
-    for (const key of cikisKeys) {
-      if (norm.includes(key)) return 'cikis';
-    }
-  }
+  let hasGiris = false, hasCikis = false;
+  let lastGirisPos = -1, lastCikisPos = -1;
+
   for (const key of girisKeys) {
-    if (norm.includes(key)) return 'giris';
+    const pos = norm.lastIndexOf(key);
+    if (pos !== -1) { hasGiris = true; if (pos > lastGirisPos) lastGirisPos = pos; }
   }
+  for (const key of cikisKeys) {
+    const pos = norm.lastIndexOf(key);
+    if (pos !== -1) { hasCikis = true; if (pos > lastCikisPos) lastCikisPos = pos; }
+  }
+
+  // Ikisi de varsa: mesajdaki son eylem ne ise onu al
+  if (hasGiris && hasCikis) {
+    return lastGirisPos > lastCikisPos ? 'giris' : 'cikis';
+  }
+  if (hasCikis) return 'cikis';
+  if (hasGiris) return 'giris';
+
   return null;
 }
 

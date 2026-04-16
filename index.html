@@ -681,11 +681,25 @@ function normalize(text) {
 
 function detectAction(message) {
   const norm = normalize(message);
+
+  // "gidip geldim", "gittim geldim" gibi ifadeler cikis DEGIL
+  const ignorePatterns = [
+    /gidip.*gel/,    // gidip geldim, gidip geliyorum
+    /gittim.*gel/,   // gittim geldim
+    /gidip.*don/,    // gidip dondum
+    /gittim.*don/,   // gittim dondum
+    /gidip.*bura/,   // gidip buradayim
+  ];
+  const isIgnored = ignorePatterns.some(p => p.test(norm));
+
   const girisKeys = settings.girisKeys.split(',').map(k => normalize(k.trim())).filter(Boolean);
   const cikisKeys = settings.cikisKeys.split(',').map(k => normalize(k.trim())).filter(Boolean);
 
-  for (const key of cikisKeys) {
-    if (norm.includes(key)) return 'cikis';
+  // Eger ignore pattern'e uyuyorsa, cikis olarak sayma — sadece giris kontrolu yap
+  if (!isIgnored) {
+    for (const key of cikisKeys) {
+      if (norm.includes(key)) return 'cikis';
+    }
   }
   for (const key of girisKeys) {
     if (norm.includes(key)) return 'giris';
